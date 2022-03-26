@@ -13,6 +13,7 @@
 local highlights = require("neo-tree.ui.highlights")
 local utils = require("neo-tree.utils")
 local file_nesting = require("neo-tree.sources.common.file-nesting")
+local container    = require("neo-tree.sources.common.container")
 
 local M = {}
 
@@ -27,6 +28,8 @@ M.clipboard = function(config, node, state)
     highlight = config.highlight or highlights.DIM_TEXT,
   }
 end
+
+M.container = container.render
 
 M.current_filter = function(config, node, state)
   local filter = node.search_pattern or ""

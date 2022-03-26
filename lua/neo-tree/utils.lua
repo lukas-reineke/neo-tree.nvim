@@ -256,6 +256,24 @@ M.set_value = function(sourceObject, valuePath, value)
   end
 end
 
+---Groups an array of items by a key.
+---@param array table The array to group.
+---@param key string The key to group by.
+---@return table table The grouped array where the keys are the unique values of the specified key.
+M.group_by = function(array, key)
+  local result = {}
+  for _, item in ipairs(array) do
+    local keyValue = item[key]
+    local group = result[keyValue]
+    if group == nil then
+      group = {}
+      result[keyValue] = group
+    end
+    table.insert(group, item)
+  end
+  return result
+end
+
 M.is_floating = function(win_id)
   win_id = win_id or vim.api.nvim_get_current_win()
   local cfg = vim.api.nvim_win_get_config(win_id)
