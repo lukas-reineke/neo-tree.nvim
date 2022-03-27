@@ -51,6 +51,11 @@ local render_content = function (config, node, state, context)
     for _, item in ipairs(items) do
       local rendered_item = item(config, node, state)
       if rendered_item then
+        if rendered_item.text then
+          -- since some of them may be a list of items and some may be a single item
+          -- make them all a list of items to simplify processing later on
+          rendered_item = { rendered_item }
+        end
         table.insert(zindex_rendered[config.align or "left"], rendered_item)
         rendered_width = rendered_width + calc_rendered_width(rendered_item)
       end
@@ -69,6 +74,18 @@ local truncate_layer = function (layer, width)
 end
 
 local merge_content = function(context)
+  -- Heres the idea:
+  -- * Starting backwards from the layer with the highest zindex
+  --   set the left and right tables to the content of the layer
+  -- * If a layer has more content than will fit, the left side will be truncated.
+  -- * If the available space is not used up, move on to the next layer
+  -- * With each subsequent layer, if the length of that layer is greater then the existing
+  --   length for that side (left or right), then clip that layer and append whatver portion is
+  --   not covered up to the appropriate side.
+  -- * Check again to see if we have used up the available width, short circuit if we have.
+  -- * Repeat until all layers have been merged.
+  -- * Join the left and right tables together and return.
+  --
   local left = {}
   local right = {}
   local keys = utils.keys(context.grouped_by_zindex, true)
@@ -77,11 +94,6 @@ local merge_content = function(context)
     local key = keys[i]
     local layer = context.grouped_by_zindex[i]
     i = i - 1
-    -- if it's not a list of items, make it one now
-    if layer.text then
-      layer = { layer }
-      context.grouped_by_zindex[i] = layer
-    end
 
     -- truncate or pad as needed, each layer should be exactly the same width
     local width = calc_container_width(layer)
