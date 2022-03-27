@@ -64,7 +64,37 @@ local render_content = function (config, node, state, context)
   return context
 end
 
+local truncate_layer = function (layer, width)
+  
+end
+
 local merge_content = function(context)
+  local merged = {}
+  local keys = utils.keys(context.grouped_by_zindex, true)
+  local i = #keys
+  while i > 0 do
+    local key = keys[i]
+    local layer = context.grouped_by_zindex[i]
+    i = i - 1
+    -- if it's not a list of items, make it one now
+    if layer.text then
+      layer = { layer }
+      context.grouped_by_zindex[i] = layer
+    end
+
+    -- truncate or pad as needed, each layer should be exactly the same width
+    local width = calc_container_width(layer)
+    if width > context.container_width then
+      layer = truncate_layer(layer, width)
+    elseif layer > context.container_width then
+      local pad_length = context.container_width - width
+      local align = keys:match("^%d+-(%a+)$") or "left"
+      local insert_at = align == "right" and 1 or nil
+      table.insert(layer, {
+        text = string.rep(" ", pad_length),
+      }, insert_at)
+    end
+  end
 end
 
 M.render = function (config, node, state, available_width)

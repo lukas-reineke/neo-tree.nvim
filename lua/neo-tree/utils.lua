@@ -207,6 +207,21 @@ M.getStringValue = function(functionOrString, node, state)
   end
 end
 
+---Return the keys of a given table.
+---@param tbl table The table to get the keys of.
+---@param sorted boolean Whether to sort the keys.
+---@return table table The keys of the table.
+M.get_keys = function(tbl, sorted)
+  local keys = {}
+  for k, _ in pairs(tbl) do
+    table.insert(keys, k)
+  end
+  if sorted then
+    table.sort(keys)
+  end
+  return keys
+end
+
 ---Handles null coalescing into a table at any depth.
 ---@param sourceObject table The table to get a vlue from.
 ---@param valuePath string The path to the value to get.
