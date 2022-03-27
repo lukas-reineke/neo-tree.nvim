@@ -46,12 +46,12 @@ local render_content = function (config, node, state, context)
 
   local grouped_by_zindex = utils.group_by(config.content, "zindex")
   for zindex, items in pairs(grouped_by_zindex) do
-    local zindex_rendered = {}
+    local zindex_rendered = { left = {}, right = {} }
     local rendered_width = 0
     for _, item in ipairs(items) do
       local rendered_item = item(config, node, state)
       if rendered_item then
-        table.insert(zindex_rendered, rendered_item)
+        table.insert(zindex_rendered[config.align or "left"], rendered_item)
         rendered_width = rendered_width + calc_rendered_width(rendered_item)
       end
     end
@@ -69,7 +69,8 @@ local truncate_layer = function (layer, width)
 end
 
 local merge_content = function(context)
-  local merged = {}
+  local left = {}
+  local right = {}
   local keys = utils.keys(context.grouped_by_zindex, true)
   local i = #keys
   while i > 0 do
