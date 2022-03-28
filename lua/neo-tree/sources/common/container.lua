@@ -1,4 +1,5 @@
 local utils = require("neo-tree.utils")
+local renderer = require("neo-tree.ui.renderer")
 
 local M = {}
 
@@ -25,7 +26,7 @@ local calc_container_width = function(config, node, state, context)
       container_width = context.max_width
     elseif config.width:match("^%d+%%$") then
       local percent = tonumber(config.width:sub(1, -2)) / 100
-      container_width = math.floor(percent * config.available_width)
+      container_width = math.floor(percent * context.available_width)
     else
       error("Invalid container width: " .. config.width)
     end
@@ -49,14 +50,12 @@ local render_content = function (config, node, state, context)
     local zindex_rendered = { left = {}, right = {} }
     local rendered_width = 0
     for _, item in ipairs(items) do
-      local rendered_item = item(config, node, state)
+      local rendered_item = renderer.render_component(item, node, state, context.available_width)
+      if item[1] == "git_status" and node.name == "container.lua" then
+        print("git_status", vim.inspect(rendered_item))
+      end
       if rendered_item then
-        if rendered_item.text then
-          -- since some of them may be a list of items and some may be a single item
-          -- make them all a list of items to simplify processing later on
-          rendered_item = { rendered_item }
-        end
-        table.insert(zindex_rendered[config.align or "left"], rendered_item)
+        vim.list_extend(zindex_rendered[item.align or "left"], rendered_item)
         rendered_width = rendered_width + calc_rendered_width(rendered_item)
       end
     end
@@ -139,7 +138,7 @@ local truncate_layer_keep_right = function (layer, skip_count, max_length)
   end
   return result
 end
-  
+local printed_count = 0
 local merge_content = function(context)
   -- Heres the idea:
   -- * Starting backwards from the layer with the highest zindex
@@ -156,10 +155,14 @@ local merge_content = function(context)
   local remaining_width = context.container_width
   local left, right = {}, {}
   local left_width, right_width = 0, 0
-  local keys = utils.keys(context.grouped_by_zindex, true)
+  local keys = utils.get_keys(context.grouped_by_zindex, true)
+  if type(keys) ~= "table" then
+    return {}
+  end
   local i = #keys
   while i > 0 do
-    local layer = context.grouped_by_zindex[i]
+    local key = keys[i]
+    local layer = context.grouped_by_zindex[key]
     i = i - 1
 
     if remaining_width > 0 and utils.truthy(layer.right) then
@@ -194,7 +197,15 @@ local merge_content = function(context)
     end
   end
 
-  return vim.list_extend(left, right)
+  local result = {}
+  vim.list_extend(result, left)
+  vim.list_extend(result, right)
+  if printed_count < 3 and #right > 0 then
+    print(vim.inspect(context.grouped_by_zindex))
+    print(vim.inspect(result))
+    printed_count = printed_count + 1
+  end
+  return result
 end
 
 M.render = function (config, node, state, available_width)
@@ -206,9 +217,7 @@ M.render = function (config, node, state, available_width)
 
   render_content(config, node, state, context)
   calc_container_width(config, node, state, context)
-  merge_content(context)
-
-  return context.merged
+  return merge_content(context)
 end
 
 return M

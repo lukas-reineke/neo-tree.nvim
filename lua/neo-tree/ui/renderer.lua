@@ -147,6 +147,37 @@ local one_line = function(text)
   end
 end
 
+M.render_component = function(component, item, state, remaining_width)
+  local component_func = state.components[component[1]]
+  if component_func then
+    local success, component_data = pcall(component_func, component, item, state, remaining_width)
+    if success then
+      if component_data == nil then
+        return { {} }
+      end
+      if component_data.text then
+        -- everything else is easier if we make sure this is always the same shape
+        -- which is an array of { text, highlight } tables
+        component_data = { component_data }
+      end
+      for _, data in ipairs(component_data) do
+        data.text = one_line(data.text)
+      end
+      return component_data
+    else
+      local name = component[1] or "[missing_name]"
+      local msg = string.format("Error rendering component %s: %s", name, component_data)
+      log.warn(msg)
+      return { { text = msg, highlight = highlights.NORMAL } }
+    end
+  else
+    local name = component[1] or "[missing_name]"
+    local msg = "Neo-tree: Component " .. name .. " not found."
+    log.warn(msg)
+    return { { text = msg, highlight = highlights.NORMAL } }
+  end
+end
+
 local prepare_node = function(item, state)
   local line = NuiLine()
 
@@ -155,27 +186,16 @@ local prepare_node = function(item, state)
     line:append(item.type .. ": ", "Comment")
     line:append(item.name)
   else
+    local used_width = 0
+    local window_width = vim.api.nvim_win_get_width(state.winid)
+
     for _, component in ipairs(renderer) do
-      local component_func = state.components[component[1]]
-      if component_func then
-        local success, component_data = pcall(component_func, component, item, state)
-        if success then
-          if component_data[1] then
-            -- a list of text objects
-            for _, data in ipairs(component_data) do
-              line:append(one_line(data.text), data.highlight)
-            end
-          else
-            line:append(one_line(component_data.text), component_data.highlight)
-          end
-        else
-          local name = component[1] or "[missing_name]"
-          local msg = string.format("Error rendering component %s: %s", name, component_data)
-          line:append(msg, highlights.NORMAL)
+      local component_data = M.render_component(component, item, state, window_width - used_width)
+      if component_data then
+        for _, data in ipairs(component_data) do
+          line:append(data.text, data.highlight)
+          used_width = used_width + #data.text
         end
-      else
-        local name = component[1] or "[missing_name]"
-        log.error("Neo-tree: Component " .. name .. " not found.")
       end
     end
   end

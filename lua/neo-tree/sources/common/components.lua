@@ -14,6 +14,7 @@ local highlights = require("neo-tree.ui.highlights")
 local utils = require("neo-tree.utils")
 local file_nesting = require("neo-tree.sources.common.file-nesting")
 local container    = require("neo-tree.sources.common.container")
+local log = require("neo-tree.log")
 
 local M = {}
 
@@ -90,6 +91,7 @@ end
 M.git_status = function(config, node, state)
   local git_status_lookup = state.git_status_lookup
   if not git_status_lookup then
+    log.trace("git_status_lookup is nil")
     return {}
   end
   local git_status = git_status_lookup[node.path]
@@ -97,6 +99,7 @@ M.git_status = function(config, node, state)
     if node.filtered_by and node.filtered_by.gitignored then
       git_status = "!!"
     else
+      log.trace("No git status for " .. node.path)
       return {}
     end
   end
@@ -175,8 +178,10 @@ M.git_status = function(config, node, state)
         highlight = status_highlt,
       })
     end
+    log.trace("git status for ", node.path, ": ", components)
     return components
   else
+    log.trace("git status for ", node.path, ": ", git_status)
     return {
       text = " [" .. git_status .. "]",
       highlight = config.highlight or change_highlt,
